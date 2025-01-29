@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor</title>
+    <link rel="stylesheet" href="css/doctor.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h2>PRESCRIPTION FOR PATIENT</h2>
+      <div style="display: flex; justify-content: center; align-items: center">
+        <button onclick="searchPatient()">SEARCH</button>
+      </div>
+      <!-- Hastalar listesi burada görünecek -->
+      <div id="patientsList"></div>
+
+      <!-- Seçilen hasta bilgileri burada gösterilecek -->
+      <div class="patient-info">
+        <p><strong>Fullname:</strong> <span id="fullname">-</span></p>
+        <p><strong>TC Id:</strong> <span id="patientTcid">-</span></p>
+      </div>
+      <p>
+        <strong>Medicine:</strong>
+        <input
+          type="text"
+          id="medicine"
+          placeholder="Name Dosage"
+          oninput="searchMedicine()"
+        />
+        <input type="number" id="medicineQuantity" placeholder="Quantity" min="1">
+        <button onclick="addMedicine()">ADD</button>
+      </p>
+      <div class="search-results" id="searchResults"></div>
+      <div class="medicine-list" id="medicineList">
+        <ul id="medicineItems"></ul>
+      </div>
+      <div style="display: flex; justify-content: center; align-items: center">
+        <button
+          onclick="submitPrescription()"
+          style="background-color: #2196f3; margin-top: 20px"
+        >
+          Submit
+        </button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="index.html">Homepage</a>
+    </div>
+
+    <script>
+      function addMedicine() {
+        let medicineInput = document.getElementById("medicine").value;
+        let quantityInput = document.getElementById("medicineQuantity").value; // Yeni input alanı
+
+        if (medicineInput.trim() === "" || quantityInput.trim() === "") return;
+
+        let li = document.createElement("li");
+
+        li.innerHTML = `
+        ${medicineInput} - 
+        <input type="number" min="1" value="${quantityInput}" class="medicine-quantity-input">
+        <button onclick="editMedicine(this)">EDIT</button>
+        <button onclick="deleteMedicine(this)">DELETE</button>
+    `;
+
+        document.getElementById("medicineItems").appendChild(li);
+        document.getElementById("medicine").value = "";
+        document.getElementById("medicineQuantity").value = ""; // Input'u sıfırla
+      }
+
+      function deleteMedicine(button) {
+        button.parentElement.remove();
+      }
+
+      function editMedicine(button) {
+        let newMedicine = prompt(
+          "Edit medicine:",
+          button.parentElement.textContent.split(" ")[0]
+        );
+        if (newMedicine) {
+          button.parentElement.innerHTML = `${newMedicine} <button onclick="editMedicine(this)">EDIT</button> <button onclick="deleteMedicine(this)">DELETE</button>`;
+        }
+      }
+
+      function searchPatient() {
+        // API'den veriyi çekiyoruz
+        fetch("https://mocki.io/v1/fa2e8110-54b8-4bde-9bd8-198213a4d1aa")
+          .then((response) => response.json()) // Veriyi JSON olarak al
+          .then((data) => {
+            // Hastalar listesine tıklanabilir öğeler ekliyoruz
+            const patientsList = document.getElementById("patientsList");
+            patientsList.innerHTML = ""; // Önceki listeyi temizliyoruz
+
+            // API'den gelen verilerle hastalar listesi oluşturuluyor
+            data.forEach((patient) => {
+              const patientItem = document.createElement("p");
+              patientItem.textContent = patient.full_name;
+              patientItem.style.cursor = "pointer";
+              patientItem.onclick = function () {
+                // Hastaya tıklanırsa, hastanın bilgilerini ekranda göster
+                document.getElementById("fullname").textContent =
+                  patient.full_name;
+                document.getElementById("patientTcid").textContent =
+                  patient.tcid;
+
+                // Listeyi gizle
+                patientsList.style.display = "none"; // Tıklanan hastadan sonra listeyi gizle
+              };
+              patientsList.appendChild(patientItem);
+            });
+
+            // Hastalar listesi görünür yapılıyor
+            patientsList.style.display = "block";
+          })
+          .catch((error) => {
+            console.error("Error fetching data:", error);
+            alert("An error occurred while fetching data.");
+          });
+      }
+
+      async function searchMedicine() {
+        let medicineName = document.getElementById("medicine").value;
+        let resultsDiv = document.getElementById("searchResults");
+
+        if (medicineName.length < 2) {
+          resultsDiv.style.display = "none";
+          return;
+        }
+
+        try {
+          let response = await fetch(
+            `https://se4458-final.onrender.com/api/medicines?name=${medicineName}`
+          );
+          let data = await response.json();
+          console.log("Gelen veri:", data);
+
+          // `medicationNames` içindeki ilaç isimlerini al
+          let medicines = data.medicationNames || [];
+
+          resultsDiv.innerHTML = ""; // Önceki sonuçları temizle
+
+          if (medicines.length > 0) {
+            medicines.forEach((med) => {
+              let p = document.createElement("p");
+              p.textContent = med;
+              p.style.cursor = "pointer";
+
+              // Tıklanınca input'a ilacı yazdır
+              p.onclick = function () {
+                document.getElementById("medicine").value = med;
+                resultsDiv.style.display = "none";
+              };
+
+              resultsDiv.appendChild(p);
+            });
+
+            resultsDiv.style.display = "block";
+          } else {
+            resultsDiv.style.display = "none";
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          resultsDiv.style.display = "none";
+        }
+      }
+
+      async function submitPrescription() {
+        let fullname = document.getElementById("fullname").textContent;
+        let tcid = document.getElementById("patientTcid").textContent;
+        let token = localStorage.getItem("authToken");
+
+        if (!token) {
+          alert("You are not authenticated. Please log in first.");
+          return;
+        }
+
+        if (fullname === "-" || tcid === "-") {
+          alert("Please select a patient before submitting the prescription.");
+          return;
+        }
+
+        let medicineItems = document.querySelectorAll("#medicineItems li");
+        if (medicineItems.length === 0) {
+          alert("Please add at least one medicine to the prescription.");
+          return;
+        }
+
+        let medicineList = [];
+        medicineItems.forEach((item) => {
+          let medicineName = item.textContent.split("-")[0].trim();
+          let quantityInput = item.querySelector(".medicine-quantity-input");
+
+          let quantity = parseInt(quantityInput?.value, 10) || 1;
+
+          medicineList.push({
+            medicine_name: medicineName,
+            quantity: quantity,
+          });
+        });
+
+        let prescriptionData = {
+          doctorId: 1,
+          tcid: parseInt(tcid, 10),
+          fullname: fullname,
+          status: "Incomplete",
+          medicineList: medicineList,
+        };
+
+        try {
+          let response = await fetch(
+            "https://se4458-final.onrender.com/api/prescriptions",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(prescriptionData),
+            }
+          );
+
+          let result = await response.json();
+          console.log("Response:", result);
+
+          if (response.ok) {
+            alert("Prescription submitted successfully!");
+          } else {
+            alert("Failed to submit prescription: " + result.message);
+          }
+        } catch (error) {
+          console.error("Error submitting prescription:", error);
+          alert("An error occurred while submitting the prescription.");
+        }
+      }
+    </script>
+  </body>
+</html>

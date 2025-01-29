@@ -1,0 +1,40 @@
+<header>
+    <nav class="navbar">
+        <div class="logo">
+            <a href="index.html">Example</a>
+        </div>
+
+        <div class="nav-links">
+            <a href="about.html">Hakkında</a>
+            <a href="contact.html">İletişim</a>
+        </div>
+
+        <div class="auth-buttons">
+            <button @click="openLoginModal = true" class="auth-btn">Giriş Yap</button>
+            <button @click="openRegisterModal = true" class="auth-btn">Kayıt Ol</button>
+        </div>
+    </nav>
+
+    <!-- Login Modal -->
+    <div x-show="openLoginModal" @click.away="openLoginModal = false" class="modal">
+        <div class="modal-content">
+            <div @click="openLoginModal = false" class="close-btn">&times;</div>
+            <h2>Giriş Yap</h2>
+            <input type="text" x-model="loginUsername" placeholder="Kullanıcı Adı">
+            <input type="password" x-model="loginPassword" placeholder="Şifre">
+            <button @click="submitLogin">Giriş Yap</button>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div x-show="openRegisterModal" @click.away="openRegisterModal = false" class="modal">
+        <div class="modal-content">
+            <div @click="openRegisterModal = false" class="close-btn">&times;</div>
+            <h2>Kayıt Ol</h2>
+            <input type="text" x-model="registerUsername" placeholder="Kullanıcı Adı">
+            <input type="password" x-model="registerPassword" placeholder="Şifre">
+            <input type="text" x-model="registerRole" placeholder="Rol">
+            <button @click="submitRegister">Kayıt Ol</button>
+        </div>
+    </div>
+</header>

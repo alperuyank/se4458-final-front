@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pharmacy</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        max-width: 90%;
+        width: 500px;
+      }
+      h2,
+      h3 {
+        text-align: center;
+      }
+      label {
+        display: block;
+        margin: 10px 0;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        font-size: 16px;
+      }
+      button:hover {
+        background-color: #218838;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      .actions button {
+        width: auto;
+        margin: 5px;
+        padding: 5px 10px;
+        font-size: 14px;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+      }
+
+      .footer a {
+        color: #4caf50;
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: bold;
+      }
+
+      .footer a:hover {
+        color: #45a049;
+      }
+      .search-results {
+        width: 100%;
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-top: 10px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-size: 14px;
+        border-radius: 5px;
+        background-color: #fff;
+      }
+
+      .search-results p {
+        padding: 8px 12px;
+        margin: 5px 0;
+        cursor: pointer;
+        border-bottom: 1px solid #ddd;
+        transition: background-color 0.3s;
+      }
+
+      .search-results p:hover {
+        background-color: #f1f1f1;
+      }
+
+      .search-results p:last-child {
+        border-bottom: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Pharmacy<span id="pharmacyName"></span></h2>
+      <label>TC Id no: <input type="text" id="tcid" readonly /></label>
+      <label>Fullname: <input type="text" id="fullname" readonly /></label>
+      <label
+        >Prescription Id: <input type="number" id="prescriptionId"
+      /></label>
+      <button id="searchBtn">SEARCH</button>
+      <div id="resultPrescriptionId"></div>
+
+      <label
+        >Medicine: <input type="text" id="medicine" oninput="searchMedicine()"
+      /></label>
+      <label>Price: <input type="text" id="price" /></label>
+
+      <!-- Search Results for medicines -->
+      <div
+        class="search-results"
+        id="searchResults"
+        style="display: none"
+      ></div>
+
+      <button id="addMedicine">ADD</button>
+
+      <div id="prescriptionMedicines"></div>
+
+      <div class="medicine-list">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Price</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="medicineItems"></tbody>
+        </table>
+      </div>
+
+      <h3>Total: <span id="totalPrice">0</span> TL</h3>
+      <div class="footer">
+        <a href="index.html">Homepage</a>
+      </div>
+    </div>
+
+    <script>
+      document
+        .getElementById("searchBtn")
+        .addEventListener("click", async () => {
+          const prescriptionId =
+            document.getElementById("prescriptionId").value;
+
+          if (!prescriptionId) {
+            alert("Lütfen bir reçete ID'si girin.");
+            return;
+          }
+
+          try {
+            const response = await fetch(
+              `https://se4458-final.onrender.com/api/prescriptions/${prescriptionId}`
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+
+              document.getElementById("tcid").value = data.prescription.tcid;
+              document.getElementById("fullname").value =
+                data.prescription.fullname;
+
+              // Reçeteye ait ilaçları al
+              const medicineResponse = await fetch(
+                `https://se4458-final.onrender.com/api/prescriptions/${prescriptionId}/medicines`
+              );
+
+              if (medicineResponse.ok) {
+                const medicines = await medicineResponse.json();
+                let prescriptionTable = document.getElementById(
+                  "prescriptionMedicines"
+                );
+                prescriptionTable.innerHTML = ""; // Önceki ilaçları temizle
+
+                // Reçeteye ait ilaçları listele
+                medicines.forEach((medicine) => {
+                  const row = document.createElement("div");
+                  row.classList.add("medicine-item");
+                  row.innerHTML = `
+              <p><strong>${medicine.medicine_name}</strong> - ${formatPrice(
+                    medicine.price
+                  )}</p>
+            `;
+                  prescriptionTable.appendChild(row);
+                });
+              } else {
+                alert("No medicines found for this prescription.");
+              }
+            } else {
+              const errorData = await response.json();
+              document.getElementById("resultPrescriptionId").innerHTML = `
+          <p style="color: red;">${errorData.message}</p>
+        `;
+            }
+          } catch (error) {
+            console.error("API isteği başarısız:", error);
+            document.getElementById("resultPrescriptionId").innerHTML = `
+        <p style="color: red;">Sunucu hatası. Lütfen tekrar deneyin.</p>
+      `;
+          }
+        });
+
+      document
+        .getElementById("addMedicine")
+        .addEventListener("click", function () {
+          let medicineName = document.getElementById("medicine").value;
+          let price = parseFloat(document.getElementById("price").value) || 0;
+
+          if (medicineName.trim() === "" || price <= 0) return;
+
+          let table = document.getElementById("medicineItems");
+          let row = document.createElement("tr");
+
+          row.innerHTML = `
+      <td>${medicineName}</td>
+      <td>${formatPrice(price)}</td>
+      <td class='actions'>
+        <button onclick="markAsGiven(this)">Verildi</button>
+        <button onclick="deleteMedicine(this)">DELETE</button>
+      </td>
+    `;
+
+          table.appendChild(row);
+          document.getElementById("medicine").value = "";
+          document.getElementById("price").value = "";
+          updateTotal();
+        });
+
+      // Fiyat formatlama fonksiyonu
+      function formatPrice(price) {
+        return price.toFixed(2); // Fiyatı iki ondalıklı basamağa yuvarla ve "TL" ekle
+      }
+
+      // Butona tıklandığında markAsGiven fonksiyonunu çağır
+      function markAsGiven(button) {
+        const row = button.parentElement.parentElement;
+        const medicineName = row.cells[0].textContent; // İlaç adını al
+        const prescriptionId = document.getElementById("prescriptionId").value; // Reçete ID'sini al
+
+        fetch("https://se4458-final.onrender.com/api/prescriptions/markAsGiven", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prescriptionId: prescriptionId,
+            medicineName: medicineName,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.message === "Medicine marked as given successfully") {
+              alert("Medicine marked as given!");
+              row.cells[2].innerHTML = "Given"; // İlaç durumu "Given" olarak değişiyor
+            } else {
+              alert(data.message);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Something went wrong!");
+          });
+      }
+
+      // Toplam fiyatı güncelleme
+      function updateTotal() {
+        let total = 0;
+        document.querySelectorAll("#medicineItems tr").forEach((row) => {
+          if (row.cells[0].style.textDecoration !== "line-through") {
+            total +=
+              parseFloat(row.cells[1].textContent.replace(" TL", "")) || 0;
+          }
+        });
+        document.getElementById("totalPrice").textContent = formatPrice(total);
+      }
+
+      // Debounce fonksiyonu
+      function debounce(func, delay) {
+        let timeoutId;
+
+        return function (...args) {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            func.apply(this, args);
+          }, delay);
+        };
+      }
+
+      // İlaç arama (searchMedicine)
+      async function searchMedicine() {
+        let medicineName = document.getElementById("medicine").value;
+        let resultsDiv = document.getElementById("searchResults");
+
+        if (medicineName.length < 2) {
+          resultsDiv.style.display = "none";
+          return;
+        }
+
+        try {
+          let response = await fetch(
+            `https://se4458-final.onrender.com/api/medicines?name=${medicineName}`
+          );
+          let data = await response.json();
+          console.log("Gelen veri:", data);
+
+          let medicines = data.medicationNames || [];
+
+          resultsDiv.innerHTML = ""; // Önceki sonuçları temizle
+
+          if (medicines.length > 0) {
+            medicines.forEach((med) => {
+              let p = document.createElement("p");
+              p.textContent = med;
+              p.style.cursor = "pointer";
+
+              // Tıklanınca input'a ilacı yazdır
+              p.onclick = function () {
+                document.getElementById("medicine").value = med;
+                resultsDiv.style.display = "none";
+              };
+
+              resultsDiv.appendChild(p);
+            });
+
+            resultsDiv.style.display = "block";
+          } else {
+            resultsDiv.style.display = "none";
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          resultsDiv.style.display = "none";
+        }
+      }
+
+      // Debounce fonksiyonunu kullanarak searchMedicine fonksiyonunu sarmalayalım
+      const debouncedSearch = debounce(searchMedicine, 500);
+
+      // Bu fonksiyonu input'a event listener ekleyerek bağlayacağız
+      document
+        .getElementById("medicine")
+        .addEventListener("input", debouncedSearch);
+    </script>
+  </body>
+</html>
